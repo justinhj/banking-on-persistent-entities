@@ -14,16 +14,20 @@ import play.api.libs.json._
   */
 trait BankingonpersistententitiesService extends Service {
 
+  def getBankAccount(id: String) : ServiceCall[NotUsed, Account]
   def bankAccountDeposit(id: String, description: String, amount: Int) : ServiceCall[NotUsed, Int]
   def bankAccountWithdrawal(id: String, description: String, amount: Int) : ServiceCall[NotUsed, WithdrawalResponse]
+  def bankAccountAssignHolder(id: String, holder: String) : ServiceCall[NotUsed, Done]
 
   override final def descriptor: Descriptor = {
     import Service._
     // @formatter:off
     named("banking-on-persistent-entities")
       .withCalls(
+        restCall(Method.GET, "/api/bankaccount/:id", getBankAccount _),
         restCall(Method.PUT, "/api/bankaccount/deposit/:id/:description/:amount", bankAccountDeposit _),
-        restCall(Method.PUT, "/api/bankaccount/withdraw/:id/:description/:amount", bankAccountWithdrawal _)
+        restCall(Method.PUT, "/api/bankaccount/withdraw/:id/:description/:amount", bankAccountWithdrawal _),
+        restCall(Method.PUT, "/api/bankaccount/assignholder/:id/:holder", bankAccountAssignHolder _)
       )
       .withAutoAcl(true)
     // @formatter:on

@@ -18,6 +18,7 @@ import akka.util.Timeout
 import com.lightbend.lagom.scaladsl.api.transport.BadRequest
 import java.time.Instant
 import org.justinhj.bankingonpersistententities.impl._
+
 /**
   * Implementation of the BankingonpersistententitiesService.
   */
@@ -29,21 +30,24 @@ class BankingonpersistententitiesServiceImpl(
 
   implicit val timeout = Timeout(5.seconds)
 
+  override def getBankAccount(id: String) : ServiceCall[NotUsed, api.Account] = ServiceCall {
+    _ =>
+      val ref = persistentEntityRegistry.refFor[BankAccountEntity](id)
+      ref.ask(GetAccountCmd).map {
+        account =>
+          api.Account(id, account.balance, account.accountHolder)
+      }
+  }
+
   override def bankAccountDeposit(id: String, description: String, amount: Int) : ServiceCall[NotUsed, Int] = ServiceCall {
     _ =>
-      // Look up the sharded entity (aka the aggregate instance) for the given ID.
       val ref = persistentEntityRegistry.refFor[BankAccountEntity](id)
-
-      // Ask the aggregate instance the Deposit command.
       ref.ask(DepositCmd(Instant.now, description, amount))
   }
 
   override def bankAccountWithdrawal(id: String, description: String, amount: Int) : ServiceCall[NotUsed, api.WithdrawalResponse] = ServiceCall {
     _ =>
-       // Look up the sharded entity (aka the aggregate instance) for the given ID.
       val ref = persistentEntityRegistry.refFor[BankAccountEntity](id)
-
-      // Ask the aggregate instance the Deposit command.
       ref.ask(WithdrawCmd(Instant.now, description, amount)).map { event =>
         event match {
           case SuccessfulWithdrawalResponse(newBalance) =>
@@ -53,4 +57,11 @@ class BankingonpersistententitiesServiceImpl(
         }
       }
   }
+
+  override def bankAccountAssignHolder(id: String, holder: String) : ServiceCall[NotUsed, Done] = ServiceCall {
+    _ =>
+      val ref = persistentEntityRegistry.refFor[BankAccountEntity](id)
+      ref.ask(AssignAccountHolderCmd(Instant.now, holder))
+  }
+
 }

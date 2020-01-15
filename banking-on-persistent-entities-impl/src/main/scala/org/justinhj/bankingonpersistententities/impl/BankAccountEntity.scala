@@ -21,6 +21,8 @@ final case class WithdrawCmd(time: Instant, description: String, amount: Int)
     extends BankAccountCommand[WithdrawalResponse]
 final case class AssignAccountHolderCmd(time: Instant, accountHolder: String)
     extends BankAccountCommand[Done]
+final case object GetAccountCmd
+    extends BankAccountCommand[Account]
 
 sealed trait BankAccountEvent extends AggregateEvent[BankAccountEvent] {
   override def aggregateTag = BankAccountEvent.bankAccountEventTag
@@ -122,6 +124,9 @@ class BankAccountEntity extends PersistentEntity {
               _ =>
                 ctx.reply(Done)
             }
+        }.onReadOnlyCommand[GetAccountCmd.type, Account]{
+          case (GetAccountCmd, ctx, state) =>
+            ctx.reply(state)
         }
         .onEvent {
             case (WithdrawEvt(time, description, amount), state) =>
