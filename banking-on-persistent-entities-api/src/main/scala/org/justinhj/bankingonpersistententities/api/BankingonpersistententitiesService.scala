@@ -1,15 +1,10 @@
 package org.justinhj.bankingonpersistententities.api
 
 import akka.{Done, NotUsed}
-import com.lightbend.lagom.scaladsl.api.broker.Topic
-import com.lightbend.lagom.scaladsl.api.broker.kafka.{KafkaProperties, PartitionKeyStrategy}
 import com.lightbend.lagom.scaladsl.api.{Descriptor, Service, ServiceCall}
-import play.api.libs.json.{Format, Json}
 import com.lightbend.lagom.scaladsl.api.transport.Method
-
-object BankingonpersistententitiesService  {
-  val TOPIC_NAME = "bankevents"
-}
+import julienrf.json.derived
+import play.api.libs.json._
 
 /**
   * The banking-on-persistent-entities service interface.
@@ -20,30 +15,15 @@ object BankingonpersistententitiesService  {
 trait BankingonpersistententitiesService extends Service {
 
   def bankAccountDeposit(id: String, description: String, amount: Int) : ServiceCall[NotUsed, Int]
-
-  /**
-    * This gets published to Kafka.
-    */
-  def accountTopic(): Topic[Account]
+  def bankAccountWithdrawal(id: String, description: String, amount: Int) : ServiceCall[NotUsed, WithdrawalResponse]
 
   override final def descriptor: Descriptor = {
     import Service._
     // @formatter:off
     named("banking-on-persistent-entities")
       .withCalls(
-        restCall(Method.PUT, "/api/bankaccount/deposit/:id/:description/:amount", bankAccountDeposit _)
-      )
-      .withTopics(
-        topic(BankingonpersistententitiesService.TOPIC_NAME, accountTopic _)
-          // Kafka partitions messages, messages within the same partition will
-          // be delivered in order, to ensure that all messages for the same user
-          // go to the same partition (and hence are delivered in order with respect
-          // to that user), we configure a partition key strategy that extracts the
-          // name as the partition key.
-          .addProperty(
-            KafkaProperties.partitionKeyStrategy,
-            PartitionKeyStrategy[Account](_.id)
-          )
+        restCall(Method.PUT, "/api/bankaccount/deposit/:id/:description/:amount", bankAccountDeposit _),
+        restCall(Method.PUT, "/api/bankaccount/withdraw/:id/:description/:amount", bankAccountWithdrawal _)
       )
       .withAutoAcl(true)
     // @formatter:on
@@ -54,4 +34,21 @@ case class Account(id: String, balance: Int, accountHolder: Option[String])
 
 object Account {
   implicit val format: Format[Account] = Json.format[Account]
+}
+
+sealed trait WithdrawalResponse
+case class SuccessfulWithdrawalResponse(newBalance: Int) extends WithdrawalResponse
+case class FailedWithdrawalResponse(message: String) extends WithdrawalResponse
+
+object SuccessfulWithdrawalResponse {
+  implicit val format: Format[SuccessfulWithdrawalResponse] = Json.format[SuccessfulWithdrawalResponse]
+}
+
+object FailedWithdrawalResponse {
+  implicit val format: Format[FailedWithdrawalResponse] = Json.format[FailedWithdrawalResponse]
+}
+
+object WithdrawalResponse {
+  implicit val format: Format[WithdrawalResponse] =
+    derived.flat.oformat((__ \ "type").format[String])
 }

@@ -38,20 +38,19 @@ class BankingonpersistententitiesServiceImpl(
       ref.ask(DepositCmd(Instant.now, description, amount))
   }
 
-  override def accountTopic(): Topic[api.Account] =
-    TopicProducer.singleStreamWithOffset { fromOffset =>
-      persistentEntityRegistry
-        .eventStream(BankAccountEvent.bankAccountEventTag, fromOffset)
-        .map(ev => (convertEvent(ev), ev.offset))
-    }
+  override def bankAccountWithdrawal(id: String, description: String, amount: Int) : ServiceCall[NotUsed, api.WithdrawalResponse] = ServiceCall {
+    _ =>
+       // Look up the sharded entity (aka the aggregate instance) for the given ID.
+      val ref = persistentEntityRegistry.refFor[BankAccountEntity](id)
 
-  private def convertEvent(
-    helloEvent: EventStreamElement[BankAccountEvent]
-  ): api.Account = {
-    ???
-    // helloEvent.event match {
-    //   case GreetingMessageChanged(msg) =>
-    //     api.GreetingMessageChanged(helloEvent.entityId, msg)
-    // }
+      // Ask the aggregate instance the Deposit command.
+      ref.ask(WithdrawCmd(Instant.now, description, amount)).map { event =>
+        event match {
+          case SuccessfulWithdrawalResponse(newBalance) =>
+            api.SuccessfulWithdrawalResponse(newBalance)
+          case FailedWithdrawalResponse(message) =>
+            api.FailedWithdrawalResponse(message)
+        }
+      }
   }
 }

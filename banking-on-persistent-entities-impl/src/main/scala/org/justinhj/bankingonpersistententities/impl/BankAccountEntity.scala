@@ -100,8 +100,11 @@ class BankAccountEntity extends PersistentEntity {
 
         Actions().onCommand[DepositCmd, Int]{
             case (DepositCmd(time, description, amount), ctx, state) =>
-                ctx.thenPersist(DepositEvt(time, description, amount)){ _ =>
-                    ctx.reply(state.balance + amount)
+                // We're going to cheat a little here and prevent negative deposits
+                // It should really be an error...
+                val safeAmount = Math.max(0, amount)
+                ctx.thenPersist(DepositEvt(time, description, safeAmount)){ _ =>
+                    ctx.reply(state.balance + safeAmount)
                 }
         }.onCommand[WithdrawCmd, WithdrawalResponse]{
           case (WithdrawCmd(time, description, amount), ctx, state) =>
