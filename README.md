@@ -4,6 +4,12 @@ This code is a companion to the blog post Banking on Persistent Entities. It imp
 
 ## Usage
 
+To run the persistent entity test suite:
+
+`sbt test`
+
+To run the full Lagom service with Cassandra and Kafka and the HTTP service:
+
 `sbt runAll`
 
 In another terminal you can use curl to execute commands:
