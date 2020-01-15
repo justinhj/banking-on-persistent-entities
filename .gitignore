@@ -11,3 +11,5 @@ bin
 .factorypath
 .settings
 logs
+.DS_Store
+project/metals.sbt
